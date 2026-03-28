@@ -140,7 +140,11 @@
             <div class="text-xs text-gray-400 uppercase">Số dư hiện tại</div>
             <div id="balance-display" class="text-xl md:text-2xl font-bold text-yellow-500">0</div>
             <div id="pnl-display" class="text-xs md:text-sm font-medium transition-all duration-300 opacity-0 mb-1">(0%)</div>
-            <button onclick="toggleTopup()" class="text-[10px] uppercase font-bold text-yellow-500/80 border border-yellow-500/30 px-2 py-1 rounded-lg hover:bg-yellow-500/10 transition-all">Nạp tiền</button>
+            <div id="debt-display" class="text-[10px] md:text-xs font-bold text-orange-500 hidden mb-1 uppercase tracking-tighter">Đang nợ: 0</div>
+            <div class="flex gap-2 justify-end">
+                <button onclick="toggleTopup()" class="text-[10px] uppercase font-bold text-yellow-500/80 border border-yellow-500/30 px-2 py-1 rounded-lg hover:bg-yellow-500/10 transition-all">Nạp tiền</button>
+                <button onclick="toggleBank()" class="text-[10px] uppercase font-bold text-orange-500/80 border border-orange-500/30 px-2 py-1 rounded-lg hover:bg-orange-500/10 transition-all">Ngân hàng</button>
+            </div>
         </div>
     </header>
 
@@ -291,11 +295,45 @@
         </div>
     </div>
 
+    <!-- Bank Modal -->
+    <div id="bank-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl w-full max-w-md border border-orange-500/20 relative">
+            <button onclick="toggleBank()" class="absolute top-4 right-4 text-gray-500 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+            <h2 class="text-xl font-bold mb-2 text-center text-orange-500 uppercase tracking-widest">Ngân hàng Tài Xỉu</h2>
+            <p id="bank-debt-display" class="text-center text-xs text-orange-400 font-bold mb-6">Tổng nợ hiện tại: 0</p>
+            
+            <div class="space-y-6">
+                <!-- Vay tiền -->
+                <div class="space-y-3">
+                    <label class="text-[10px] uppercase text-gray-500 font-bold">Vay tiền</label>
+                    <div class="flex gap-2">
+                        <input type="number" id="loan-amount" placeholder="Nhập số tiền muốn vay..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-orange-500 text-sm focus:border-orange-500 outline-none">
+                        <button onclick="processLoan()" class="px-4 bg-orange-600 text-white font-bold rounded-xl hover:bg-orange-700 transition-all uppercase text-xs">Vay</button>
+                    </div>
+                </div>
+
+                <div class="border-t border-neutral-800 pt-6 space-y-3">
+                    <label class="text-[10px] uppercase text-gray-500 font-bold">Trả nợ</label>
+                    <div class="flex gap-2">
+                        <input type="number" id="repay-amount" placeholder="Nhập số tiền muốn trả..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-green-500 text-sm focus:border-green-500 outline-none">
+                        <button onclick="processRepay()" class="px-4 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all uppercase text-xs">Trả</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 mt-4">
+                    <button onclick="setBankAmount(10000000)" class="py-2 rounded-lg border border-neutral-800 text-[10px] hover:border-orange-500 transition-colors">10M</button>
+                    <button onclick="setBankAmount(100000000)" class="py-2 rounded-lg border border-neutral-800 text-[10px] hover:border-orange-500 transition-colors">100M</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div id="toast-container" class="fixed bottom-8 right-4 left-4 md:left-auto md:w-80 flex flex-col gap-2 z-50"></div>
 
     <script>
         let balance = 0, initialVốn = 0, currentBetType = null, isRolling = false, history = [], stats = { total: 0, wins: 0 };
+        let currentDebt = 0;
         let upgrades = { payoutLevel: 0, refundLevel: 0 };
         const UPGRADE_CONFIG = {
             payout: { basePrice: 50000000, baseMultiplier: 2.05, increment: 0.01 },
@@ -308,12 +346,14 @@
             const i = localStorage.getItem('tx_initial_vốn');
             const s = localStorage.getItem('tx_stats');
             const h = localStorage.getItem('tx_history');
+            const d = localStorage.getItem('tx_debt');
 
             if (b) balance = parseInt(b);
             if (i) initialVốn = parseInt(i);
             if (u) upgrades = JSON.parse(u);
             if (s) stats = JSON.parse(s);
             if (h) history = JSON.parse(h);
+            if (d) currentDebt = parseInt(d);
             
             updateBalance();
             updateShopUI();
@@ -326,18 +366,39 @@
             localStorage.setItem('tx_initial_vốn', initialVốn);
             localStorage.setItem('tx_stats', JSON.stringify(stats));
             localStorage.setItem('tx_history', JSON.stringify(history));
+            localStorage.setItem('tx_debt', currentDebt);
         }
         function updateBalance() {
             document.getElementById('balance-display').textContent = balance.toLocaleString('vi-VN');
             updatePnL();
+            updateDebtUI();
         }
         function updatePnL() {
             const el = document.getElementById('pnl-display');
-            if (!initialVốn) { el.classList.add('opacity-0'); return; }
-            const p = ((balance - initialVốn) / initialVốn) * 100;
+            if (!initialVốn || initialVốn <= 0) { el.classList.add('opacity-0'); return; }
+            
+            // PnL thực tế = (Số dư - Số nợ - Vốn ban đầu) / Vốn ban đầu * 100
+            const actualProfit = balance - currentDebt - initialVốn;
+            const p = (actualProfit / initialVốn) * 100;
+            
             el.textContent = `(${p > 0 ? '+' : ''}${p.toFixed(1)}%)`;
             el.classList.remove('opacity-0');
             el.className = `text-xs md:text-sm font-medium transition-all duration-300 ${p > 0 ? 'text-green-400' : p < 0 ? 'text-red-400' : 'text-gray-400'}`;
+        }
+        function updateDebtUI() {
+            const debtEl = document.getElementById('debt-display');
+            const bankDebtEl = document.getElementById('bank-debt-display');
+            
+            if (currentDebt > 0) {
+                debtEl.textContent = `Đang nợ: ${currentDebt.toLocaleString('vi-VN')}`;
+                debtEl.classList.remove('hidden');
+            } else {
+                debtEl.classList.add('hidden');
+            }
+            
+            if (bankDebtEl) {
+                bankDebtEl.textContent = `Tổng nợ hiện tại: ${currentDebt.toLocaleString('vi-VN')}`;
+            }
         }
         function toggleShop() { const m = document.getElementById('shop-modal'); m.classList.toggle('hidden'); if (!m.classList.contains('hidden')) updateShopUI(); }
         function toggleTopup() { document.getElementById('topup-modal').classList.toggle('hidden'); }
@@ -403,7 +464,73 @@
         function appendZeros() { const i = document.getElementById('bet-amount'); if (i.value) i.value += "000"; }
         function setTopupAmount(a) { document.getElementById('topup-amount').value = a; }
         function processTopup() { const i = document.getElementById('topup-amount'), a = parseInt(i.value); if (isNaN(a) || a <= 0) return; balance += a; saveGameData(); updateBalance(); toggleTopup(); i.value = ""; showToast(`Nạp +${a.toLocaleString('vi-VN')}`, "success"); }
-        function resetCapital() { if (confirm("Reset vốn?")) { balance = initialVốn; stats = { total: 0, wins: 0 }; history = []; if (confirm("Reset Shop?")) upgrades = { payoutLevel: 0, refundLevel: 0 }; saveGameData(); updateBalance(); updateStats(); updateHistory(); updateShopUI(); } }
+        
+        // Bank Functions
+        function toggleBank() {
+            document.getElementById('bank-modal').classList.toggle('hidden');
+            updateDebtUI();
+        }
+
+        function setBankAmount(amount) {
+            document.getElementById('loan-amount').value = amount;
+            document.getElementById('repay-amount').value = amount;
+        }
+
+        function processLoan() {
+            const input = document.getElementById('loan-amount');
+            const amount = parseInt(input.value);
+
+            if (isNaN(amount) || amount <= 0) {
+                showToast("Vui lòng nhập số tiền hợp lệ!", "error");
+                return;
+            }
+
+            balance += amount;
+            currentDebt += amount;
+            
+            saveGameData();
+            updateBalance();
+            input.value = "";
+            showToast(`Bạn đã vay thành công ${amount.toLocaleString('vi-VN')}! Đừng quên trả nợ nhé.`, "success");
+        }
+
+        function processRepay() {
+            const input = document.getElementById('repay-amount');
+            const amount = parseInt(input.value);
+
+            if (isNaN(amount) || amount <= 0) {
+                showToast("Vui lòng nhập số tiền hợp lệ!", "error");
+                return;
+            }
+
+            if (balance < amount) {
+                showToast("Số dư không đủ để trả nợ!", "error");
+                return;
+            }
+
+            if (currentDebt <= 0) {
+                showToast("Bạn hiện không có khoản nợ nào.", "info");
+                return;
+            }
+
+            // Nếu trả nhiều hơn nợ, chỉ trừ hết nợ
+            const actualRepay = Math.min(amount, currentDebt);
+            
+            balance -= actualRepay;
+            currentDebt -= actualRepay;
+
+            saveGameData();
+            updateBalance();
+            input.value = "";
+            
+            if (currentDebt === 0) {
+                showToast("Chúc mừng! Bạn đã trả hết nợ.", "success");
+            } else {
+                showToast(`Đã trả ${actualRepay.toLocaleString('vi-VN')} tiền nợ.`, "success");
+            }
+        }
+
+        function resetCapital() { if (confirm("Reset vốn?")) { balance = initialVốn; stats = { total: 0, wins: 0 }; history = []; currentDebt = 0; if (confirm("Reset Shop?")) upgrades = { payoutLevel: 0, refundLevel: 0 }; saveGameData(); updateBalance(); updateStats(); updateHistory(); updateShopUI(); } }
 
         async function rollDice() {
             if (isRolling) return;
