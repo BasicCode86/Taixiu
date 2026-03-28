@@ -120,6 +120,17 @@
         .dice-1 { grid-area: d1; }
         .dice-2 { grid-area: d2; }
         .dice-3 { grid-area: d3; }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .pulse-martingale {
+            animation: pulse-red 1.5s infinite;
+            border-color: rgba(239, 68, 68, 0.8) !important;
+            background-color: rgba(127, 29, 29, 0.4) !important;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center p-4 md:p-8">
@@ -218,9 +229,10 @@
             <div class="glass-panel p-6 rounded-3xl space-y-4">
                 <div class="flex flex-col md:flex-row gap-4 items-center">
                     <div class="relative w-full">
-                        <input type="number" id="bet-amount" placeholder="Số tiền cược..." 
-                            class="w-full bg-neutral-900 border border-neutral-800 rounded-xl pl-4 pr-32 py-3 focus:outline-none focus:border-yellow-500 text-yellow-500">
+                        <input type="text" id="bet-amount" placeholder="Số tiền cược..." 
+                            class="w-full bg-neutral-900 border border-neutral-800 rounded-xl pl-4 pr-40 py-3 focus:outline-none focus:border-yellow-500 text-yellow-500">
                         <div class="absolute right-2 top-2 bottom-2 flex gap-1">
+                            <button id="martingale-btn" onclick="martingale()" class="px-2 bg-red-900/30 text-red-500 text-[10px] font-bold rounded-lg border border-red-500/20 hover:bg-red-500/40 transition-all">x2</button>
                             <button onclick="appendZeros()" class="px-2 bg-yellow-500/10 text-yellow-500 text-[10px] font-bold rounded-lg border border-yellow-500/20">000</button>
                             <button onclick="allIn()" class="px-2 bg-red-900/30 text-red-500 text-[10px] font-bold rounded-lg border border-red-500/20">ALL-IN</button>
                         </div>
@@ -385,6 +397,26 @@
             updatePnL();
             updateDebtUI();
         }
+
+        // Input Formatting
+        function formatBetInput(val) {
+            if (!val) return "";
+            let n = val.toString().replace(/\D/g, '');
+            return n ? parseInt(n).toLocaleString('vi-VN') : "";
+        }
+        function parseBetInput(val) {
+            return parseInt(val.toString().replace(/\D/g, '')) || 0;
+        }
+        
+        const betInput = document.getElementById('bet-amount');
+        betInput.addEventListener('input', function(e) {
+            const cursor = e.target.selectionStart;
+            const oldLen = e.target.value.length;
+            const raw = parseBetInput(e.target.value);
+            e.target.value = formatBetInput(raw);
+            const newLen = e.target.value.length;
+            e.target.setSelectionRange(cursor + (newLen - oldLen), cursor + (newLen - oldLen));
+        });
         function updatePnL() {
             const el = document.getElementById('pnl-display');
             if (!initialVốn || initialVốn <= 0) { el.classList.add('opacity-0'); return; }
@@ -455,8 +487,14 @@
             rs.textContent = sum; rs.classList.remove('opacity-0');
             rl.textContent = resultType === 'TAI' ? 'Tài' : 'Xỉu'; rl.classList.remove('opacity-0');
             rl.className = `text-sm font-medium uppercase tracking-[0.3em] mt-2 ${resultType === 'TAI' ? 'text-red-500' : 'text-blue-500'}`;
-            if (isWin) showToast(`Thắng +${winAmount.toLocaleString('vi-VN')}`, "success");
-            else showToast(`Thua -${betAmount.toLocaleString('vi-VN')}${refundAmount > 0 ? `. Hoàn: +${refundAmount.toLocaleString('vi-VN')}` : ''}`, "error");
+            if (isWin) {
+                showToast(`Thắng +${winAmount.toLocaleString('vi-VN')}`, "success");
+                document.getElementById('martingale-btn').classList.remove('pulse-martingale');
+            } else {
+                showToast(`Thua -${betAmount.toLocaleString('vi-VN')}${refundAmount > 0 ? `. Hoàn: +${refundAmount.toLocaleString('vi-VN')}` : ''}`, "error");
+                // Thêm hiệu ứng nhấp nháy gợi ý Martingale khi thua
+                document.getElementById('martingale-btn').classList.add('pulse-martingale');
+            }
             
             // Cập nhật lại các biến trạng thái quan trọng để ván sau không bị treo
             isRolling = false;
@@ -471,9 +509,36 @@
 
         function startGame() { const i = document.getElementById('initial-capital'), a = parseInt(i.value); if (isNaN(a) || a <= 0) return; balance = a; initialVốn = a; saveGameData(); updateBalance(); document.getElementById('setup-modal').classList.add('hidden'); }
         function selectBetType(t) { if (isRolling) return; currentBetType = t; document.getElementById('bet-xiu').classList.toggle('active', t === 'XIU'); document.getElementById('bet-tai').classList.toggle('active', t === 'TAI'); }
-        function setQuickAmount(a) { document.getElementById('bet-amount').value = a; }
-        function allIn() { document.getElementById('bet-amount').value = balance; }
-        function appendZeros() { const i = document.getElementById('bet-amount'); if (i.value) i.value += "000"; }
+        function setQuickAmount(a) { 
+            const i = document.getElementById('bet-amount');
+            i.value = formatBetInput(a);
+        }
+        function allIn() { 
+            const i = document.getElementById('bet-amount');
+            i.value = formatBetInput(balance);
+        }
+        function appendZeros() { 
+            const i = document.getElementById('bet-amount');
+            if (i.value) {
+                let raw = parseBetInput(i.value).toString() + "000";
+                i.value = formatBetInput(raw);
+            }
+        }
+        function martingale() {
+            const i = document.getElementById('bet-amount');
+            let a = parseBetInput(i.value);
+            if (isNaN(a) || a <= 0) return;
+            
+            let doubled = a * 2;
+            if (doubled > balance) {
+                i.value = formatBetInput(balance);
+                showToast("Đã cược tất cả do không đủ tiền gấp đôi!", "warning");
+            } else {
+                i.value = formatBetInput(doubled);
+            }
+            // Xóa hiệu ứng nhấp nháy khi đã bấm
+            document.getElementById('martingale-btn').classList.remove('pulse-martingale');
+        }
         function setTopupAmount(a) { document.getElementById('topup-amount').value = a; }
         function processTopup() { const i = document.getElementById('topup-amount'), a = parseInt(i.value); if (isNaN(a) || a <= 0) return; balance += a; saveGameData(); updateBalance(); toggleTopup(); i.value = ""; showToast(`Nạp +${a.toLocaleString('vi-VN')}`, "success"); }
         
@@ -567,7 +632,7 @@
         async function rollDice() {
             if (isRolling) return;
             const betInput = document.getElementById('bet-amount');
-            const a = parseInt(betInput.value);
+            const a = parseBetInput(betInput.value);
             
             if (!currentBetType || isNaN(a) || a <= 0 || a > balance) { 
                 showToast("Cược không hợp lệ!", "warning"); 
@@ -580,6 +645,9 @@
                 
                 balance -= a; 
                 updateBalance();
+                
+                // Xóa hiệu ứng gợi ý khi bắt đầu ván mới
+                document.getElementById('martingale-btn').classList.remove('pulse-martingale');
                 
                 const rs = document.getElementById('result-sum'), 
                       rl = document.getElementById('result-label'), 
