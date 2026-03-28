@@ -18,6 +18,7 @@
         .gold-gradient {
             background: linear-gradient(135deg, #d4af37 0%, #f9d423 100%);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -260,7 +261,7 @@
                 <!-- Refund -->
                 <div class="glass-panel p-6 rounded-2xl border border-blue-500/10 flex flex-col items-center text-center">
                     <i data-lucide="shield-check" class="w-8 h-8 text-blue-500 mb-4"></i>
-                    <h3 class="font-bold text-blue-500 mb-1">Bảo hiểm</h3>
+                    <h3 class="font-bold text-blue-500 mb-1">Bảo hiểm nhân thọ</h3>
                     <p class="text-xs text-gray-500 mb-4">Hoàn trả +1%/cấp</p>
                     <div class="w-full bg-black/40 rounded-xl p-3 mb-6 text-xs">
                         <div class="flex justify-between mb-1"><span>Cấp:</span><span id="refund-level" class="text-blue-500 font-bold">0/10</span></div>
@@ -302,14 +303,29 @@
         };
 
         function loadGameData() {
-            const b = localStorage.getItem('tx_balance'), u = localStorage.getItem('tx_upgrades'), i = localStorage.getItem('tx_initial_vốn');
-            if (b) balance = parseInt(b); if (i) initialVốn = parseInt(i); if (u) upgrades = JSON.parse(u);
-            updateBalance(); updateShopUI();
+            const b = localStorage.getItem('tx_balance');
+            const u = localStorage.getItem('tx_upgrades');
+            const i = localStorage.getItem('tx_initial_vốn');
+            const s = localStorage.getItem('tx_stats');
+            const h = localStorage.getItem('tx_history');
+
+            if (b) balance = parseInt(b);
+            if (i) initialVốn = parseInt(i);
+            if (u) upgrades = JSON.parse(u);
+            if (s) stats = JSON.parse(s);
+            if (h) history = JSON.parse(h);
+            
+            updateBalance();
+            updateShopUI();
+            updateStats();
+            updateHistory();
         }
         function saveGameData() {
             localStorage.setItem('tx_balance', balance);
             localStorage.setItem('tx_upgrades', JSON.stringify(upgrades));
             localStorage.setItem('tx_initial_vốn', initialVốn);
+            localStorage.setItem('tx_stats', JSON.stringify(stats));
+            localStorage.setItem('tx_history', JSON.stringify(history));
         }
         function updateBalance() {
             document.getElementById('balance-display').textContent = balance.toLocaleString('vi-VN');
@@ -368,7 +384,16 @@
             rl.className = `text-sm font-medium uppercase tracking-[0.3em] mt-2 ${resultType === 'TAI' ? 'text-red-500' : 'text-blue-500'}`;
             if (isWin) showToast(`Thắng +${winAmount.toLocaleString('vi-VN')}`, "success");
             else showToast(`Thua -${betAmount.toLocaleString('vi-VN')}${refundAmount > 0 ? `. Hoàn: +${refundAmount.toLocaleString('vi-VN')}` : ''}`, "error");
-            updateBalance(); updateStats(); updateHistory(); isRolling = false; document.getElementById('roll-button').disabled = false;
+            
+            // Cập nhật lại các biến trạng thái quan trọng để ván sau không bị treo
+            isRolling = false;
+            canUnveil = false; 
+            document.getElementById('roll-button').disabled = false;
+            
+            // Cập nhật thống kê và lịch sử vào UI
+            updateBalance(); 
+            updateStats(); 
+            updateHistory(); 
         }
 
         function startGame() { const i = document.getElementById('initial-capital'), a = parseInt(i.value); if (isNaN(a) || a <= 0) return; balance = a; initialVốn = a; saveGameData(); updateBalance(); document.getElementById('setup-modal').classList.add('hidden'); }
@@ -382,33 +407,116 @@
 
         async function rollDice() {
             if (isRolling) return;
-            const a = parseInt(document.getElementById('bet-amount').value);
-            if (!currentBetType || isNaN(a) || a <= 0 || a > balance) { showToast("Cược không hợp lệ!", "warning"); return; }
-            isRolling = true; balance -= a; updateBalance();
-            const rs = document.getElementById('result-sum'), rl = document.getElementById('result-label'), b = document.getElementById('bowl'), dc = document.getElementById('dice-container');
-            document.getElementById('roll-button').disabled = true;
-            rs.classList.add('opacity-0'); rl.classList.add('opacity-0');
-            b.style.display = 'flex'; b.style.transform = 'translate(-50%, -50%)'; b.classList.remove('auto-slide');
-            dc.classList.add('dice-shake');
-            await new Promise(r => setTimeout(r, 1500));
-            const d = [Math.floor(Math.random()*6)+1, Math.floor(Math.random()*6)+1, Math.floor(Math.random()*6)+1], s = d.reduce((x,y)=>x+y, 0), rt = s >= 11 ? 'TAI' : 'XIU';
-            dc.classList.remove('dice-shake');
-            dc.innerHTML = d.map((v, i) => `<div class="dice-${i+1} w-16 h-16 md:w-20 md:h-20 bg-neutral-800 rounded-2xl flex items-center justify-center border border-neutral-700"><i data-lucide="dice-${v}" class="w-10 h-10 md:w-12 md:h-12 ${v === 1 ? 'text-red-500' : 'text-yellow-500'}"></i></div>`).join('');
-            lucide.createIcons();
-            const win = currentBetType === rt; let wa = 0, ra = 0;
-            if (win) { wa = Math.round(a * (UPGRADE_CONFIG.payout.baseMultiplier + upgrades.payoutLevel * UPGRADE_CONFIG.payout.increment)); balance += wa; stats.wins++; }
-            else if (upgrades.refundLevel > 0) { ra = Math.round(a * (upgrades.refundLevel / 100)); balance += ra; }
-            lastResult = { sum: s, resultType: rt, isWin: win, winAmount: wa, betAmount: a, refundAmount: ra };
-            stats.total++; history.unshift(rt === 'TAI' ? 'T' : 'X'); if (history.length > 10) history.pop();
-            saveGameData(); canUnveil = true; showToast("Kéo bát để xem!", "info");
+            const betInput = document.getElementById('bet-amount');
+            const a = parseInt(betInput.value);
+            
+            if (!currentBetType || isNaN(a) || a <= 0 || a > balance) { 
+                showToast("Cược không hợp lệ!", "warning"); 
+                return; 
+            }
+
+            try {
+                isRolling = true; 
+                document.getElementById('roll-button').disabled = true;
+                
+                balance -= a; 
+                updateBalance();
+                
+                const rs = document.getElementById('result-sum'), 
+                      rl = document.getElementById('result-label'), 
+                      b = document.getElementById('bowl'), 
+                      dc = document.getElementById('dice-container');
+                
+                rs.classList.add('opacity-0'); 
+                rl.classList.add('opacity-0');
+                
+                b.style.display = 'flex'; 
+                b.style.transform = 'translate(-50%, -50%)'; 
+                b.classList.remove('auto-slide');
+                
+                dc.classList.add('dice-shake');
+                
+                // Giả lập thời gian lắc xúc xắc
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                const d = [
+                    Math.floor(Math.random() * 6) + 1, 
+                    Math.floor(Math.random() * 6) + 1, 
+                    Math.floor(Math.random() * 6) + 1
+                ];
+                const s = d.reduce((x, y) => x + y, 0);
+                const rt = s >= 11 ? 'TAI' : 'XIU';
+                
+                dc.classList.remove('dice-shake');
+                dc.innerHTML = d.map((v, i) => `
+                    <div class="dice-${i+1} w-16 h-16 md:w-20 md:h-20 bg-neutral-800 rounded-2xl flex items-center justify-center border border-neutral-700">
+                        <i data-lucide="dice-${v}" class="w-10 h-10 md:w-12 md:h-12 ${v === 1 ? 'text-red-500' : 'text-yellow-500'}"></i>
+                    </div>
+                `).join('');
+                
+                lucide.createIcons();
+                
+                const win = currentBetType === rt; 
+                let wa = 0, ra = 0;
+                
+                if (win) { 
+                    wa = Math.round(a * (UPGRADE_CONFIG.payout.baseMultiplier + upgrades.payoutLevel * UPGRADE_CONFIG.payout.increment)); 
+                    balance += wa; 
+                    stats.wins++; 
+                } else if (upgrades.refundLevel > 0) { 
+                    ra = Math.round(a * (upgrades.refundLevel / 100)); 
+                    balance += ra; 
+                }
+                
+                lastResult = { sum: s, resultType: rt, isWin: win, winAmount: wa, betAmount: a, refundAmount: ra };
+                
+                stats.total++; 
+                history.unshift(rt === 'TAI' ? 'T' : 'X'); 
+                if (history.length > 10) history.pop();
+                
+                saveGameData(); 
+                canUnveil = true; 
+                showToast("Hãy kéo bát để xem kết quả!", "info");
+
+            } catch (error) {
+                console.error("Game Error:", error);
+                isRolling = false;
+                document.getElementById('roll-button').disabled = false;
+                showToast("Có lỗi xảy ra, vui lòng thử lại!", "error");
+            }
         }
 
-        function updateStats() { const r = stats.total ? Math.round((stats.wins/stats.total)*100) : 0; document.getElementById('total-games').textContent = stats.total; document.getElementById('win-rate').textContent = r+'%'; document.getElementById('total-games-mobile').textContent = stats.total; document.getElementById('win-rate-mobile').textContent = r+'%'; }
-        function updateHistory() { const h = history.map(x => `<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${x === 'T' ? 'bg-red-900/30 text-red-500 border border-red-500/30' : 'bg-blue-900/30 text-blue-500 border border-blue-500/30'}">${x}</div>`).join(''); document.getElementById('history-list').innerHTML = h; document.getElementById('history-list-mobile').innerHTML = h; }
+        function updateStats() { 
+            const total = stats.total || 0;
+            const wins = stats.wins || 0;
+            const r = total ? Math.round((wins / total) * 100) : 0; 
+            
+            document.getElementById('total-games').textContent = total; 
+            document.getElementById('win-rate').textContent = r + '%'; 
+            
+            // Check if mobile elements exist before updating
+            const totalMobile = document.getElementById('total-games-mobile');
+            const rateMobile = document.getElementById('win-rate-mobile');
+            if (totalMobile) totalMobile.textContent = total; 
+            if (rateMobile) rateMobile.textContent = r + '%'; 
+        }
+        function updateHistory() { 
+            const historyList = document.getElementById('history-list');
+            if (!historyList) return;
+
+            const h = (history || []).map(x => `<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${x === 'T' ? 'bg-red-900/30 text-red-500 border border-red-500/30' : 'bg-blue-900/30 text-blue-500 border border-blue-500/30'}">${x}</div>`).join(''); 
+            
+            historyList.innerHTML = h; 
+            
+            const historyMobile = document.getElementById('history-list-mobile');
+            if (historyMobile) historyMobile.innerHTML = h; 
+        }
         function showToast(m, t = 'info') { const c = document.getElementById('toast-container'), toast = document.createElement('div'), cls = {success:'bg-green-900/80 border-green-500 text-green-200',error:'bg-red-900/80 border-red-500 text-red-200',warning:'bg-yellow-900/80 border-yellow-500 text-yellow-200',info:'bg-neutral-900/80 border-neutral-700 text-neutral-200'}; toast.className = `toast p-4 rounded-xl border-l-4 glass-panel ${cls[t]}`; toast.innerHTML = `<span class="text-sm font-medium">${m}</span>`; c.appendChild(toast); setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000); }
 
         lucide.createIcons(); loadGameData(); updateClock(); setInterval(updateClock, 1000); initBowlInteraction();
         function updateClock() { const n = new Date(); document.getElementById('real-time-clock').textContent = n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0')+':'+n.getSeconds().toString().padStart(2,'0'); }
     </script>
+</body>
+</html>
 </body>
 </html>
