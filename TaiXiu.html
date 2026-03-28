@@ -300,15 +300,24 @@
         <div class="glass-panel p-8 rounded-3xl w-full max-w-md border border-orange-500/20 relative">
             <button onclick="toggleBank()" class="absolute top-4 right-4 text-gray-500 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
             <h2 class="text-xl font-bold mb-2 text-center text-orange-500 uppercase tracking-widest">Ngân hàng Tài Xỉu</h2>
-            <p id="bank-debt-display" class="text-center text-xs text-orange-400 font-bold mb-6">Tổng nợ hiện tại: 0</p>
+            <p id="bank-debt-display" class="text-center text-xs text-orange-400 font-bold mb-4">Tổng nợ hiện tại: 0</p>
             
             <div class="space-y-6">
                 <!-- Vay tiền -->
                 <div class="space-y-3">
-                    <label class="text-[10px] uppercase text-gray-500 font-bold">Vay tiền</label>
-                    <div class="flex gap-2">
-                        <input type="number" id="loan-amount" placeholder="Nhập số tiền muốn vay..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-orange-500 text-sm focus:border-orange-500 outline-none">
-                        <button onclick="processLoan()" class="px-4 bg-orange-600 text-white font-bold rounded-xl hover:bg-orange-700 transition-all uppercase text-xs">Vay</button>
+                    <div class="flex justify-between items-center">
+                        <label class="text-[10px] uppercase text-gray-500 font-bold">Vay tiền</label>
+                        <span class="text-[9px] text-red-500 font-bold italic">Phí giao dịch: 20%</span>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <div class="flex gap-2">
+                            <input type="number" id="loan-amount" oninput="calculateLoan()" placeholder="Nhập số tiền muốn vay..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-orange-500 text-sm focus:border-orange-500 outline-none">
+                            <button onclick="processLoan()" class="px-4 bg-orange-600 text-white font-bold rounded-xl hover:bg-orange-700 transition-all uppercase text-xs">Vay</button>
+                        </div>
+                        <div id="loan-calc" class="bg-black/40 p-3 rounded-xl text-[10px] space-y-1 hidden">
+                            <div class="flex justify-between text-gray-400"><span>Thực nhận (80%):</span><span id="loan-receive" class="text-green-500 font-bold">0</span></div>
+                            <div class="flex justify-between text-gray-400"><span>Nợ ghi nhận (100%):</span><span id="loan-debt" class="text-red-500 font-bold">0</span></div>
+                        </div>
                     </div>
                 </div>
 
@@ -333,7 +342,7 @@
 
     <script>
         let balance = 0, initialVốn = 0, currentBetType = null, isRolling = false, history = [], stats = { total: 0, wins: 0 };
-        let currentDebt = 0;
+        let currentDebt = 0, betCounter = 0;
         let upgrades = { payoutLevel: 0, refundLevel: 0 };
         const UPGRADE_CONFIG = {
             payout: { basePrice: 50000000, baseMultiplier: 2.05, increment: 0.01 },
@@ -347,13 +356,15 @@
             const s = localStorage.getItem('tx_stats');
             const h = localStorage.getItem('tx_history');
             const d = localStorage.getItem('tx_debt');
+            const bc = localStorage.getItem('tx_bet_counter');
 
             if (b) balance = parseInt(b);
             if (i) initialVốn = parseInt(i);
             if (u) upgrades = JSON.parse(u);
             if (s) stats = JSON.parse(s);
             if (h) history = JSON.parse(h);
-            if (d) currentDebt = parseInt(d);
+            if (d) currentDebt = parseFloat(d);
+            if (bc) betCounter = parseInt(bc);
             
             updateBalance();
             updateShopUI();
@@ -367,6 +378,7 @@
             localStorage.setItem('tx_stats', JSON.stringify(stats));
             localStorage.setItem('tx_history', JSON.stringify(history));
             localStorage.setItem('tx_debt', currentDebt);
+            localStorage.setItem('tx_bet_counter', betCounter);
         }
         function updateBalance() {
             document.getElementById('balance-display').textContent = balance.toLocaleString('vi-VN');
@@ -474,6 +486,24 @@
         function setBankAmount(amount) {
             document.getElementById('loan-amount').value = amount;
             document.getElementById('repay-amount').value = amount;
+            calculateLoan();
+        }
+
+        function calculateLoan() {
+            const input = document.getElementById('loan-amount');
+            const calcDiv = document.getElementById('loan-calc');
+            const receiveEl = document.getElementById('loan-receive');
+            const debtEl = document.getElementById('loan-debt');
+            const amount = parseInt(input.value);
+
+            if (isNaN(amount) || amount <= 0) {
+                calcDiv.classList.add('hidden');
+                return;
+            }
+
+            calcDiv.classList.remove('hidden');
+            receiveEl.textContent = Math.floor(amount * 0.8).toLocaleString('vi-VN');
+            debtEl.textContent = amount.toLocaleString('vi-VN');
         }
 
         function processLoan() {
@@ -485,13 +515,15 @@
                 return;
             }
 
-            balance += amount;
+            const receiveAmount = Math.floor(amount * 0.8);
+            balance += receiveAmount;
             currentDebt += amount;
             
             saveGameData();
             updateBalance();
             input.value = "";
-            showToast(`Bạn đã vay thành công ${amount.toLocaleString('vi-VN')}! Đừng quên trả nợ nhé.`, "success");
+            document.getElementById('loan-calc').classList.add('hidden');
+            showToast(`Vay thành công! Thực nhận ${receiveAmount.toLocaleString('vi-VN')} (đã trừ 20% phí). Đừng quên trả nợ!`, "success");
         }
 
         function processRepay() {
@@ -530,7 +562,7 @@
             }
         }
 
-        function resetCapital() { if (confirm("Reset vốn?")) { balance = initialVốn; stats = { total: 0, wins: 0 }; history = []; currentDebt = 0; if (confirm("Reset Shop?")) upgrades = { payoutLevel: 0, refundLevel: 0 }; saveGameData(); updateBalance(); updateStats(); updateHistory(); updateShopUI(); } }
+        function resetCapital() { if (confirm("Reset vốn?")) { balance = initialVốn; stats = { total: 0, wins: 0 }; history = []; currentDebt = 0; betCounter = 0; if (confirm("Reset Shop?")) upgrades = { payoutLevel: 0, refundLevel: 0 }; saveGameData(); updateBalance(); updateStats(); updateHistory(); updateShopUI(); } }
 
         async function rollDice() {
             if (isRolling) return;
@@ -598,8 +630,24 @@
                 lastResult = { sum: s, resultType: rt, isWin: win, winAmount: wa, betAmount: a, refundAmount: ra };
                 
                 stats.total++; 
+                betCounter++; // Tăng biến đếm ván cược
+                
                 history.unshift(rt === 'TAI' ? 'T' : 'X'); 
                 if (history.length > 10) history.pop();
+                
+                // Kiểm tra lãi nợ sau mỗi 5 ván cược
+                if (currentDebt > 0 && betCounter % 5 === 0) {
+                    const interest = currentDebt * 0.01;
+                    currentDebt += interest;
+                    showToast(`Phát sinh 1% lãi nợ sau 5 ván cược: +${Math.round(interest).toLocaleString('vi-VN')}`, "warning");
+                    
+                    // Hiệu ứng rung nhẹ cho dòng hiển thị nợ
+                    const debtEl = document.getElementById('debt-display');
+                    if (debtEl) {
+                        debtEl.classList.add('scale-110', 'text-red-500');
+                        setTimeout(() => debtEl.classList.remove('scale-110', 'text-red-500'), 500);
+                    }
+                }
                 
                 saveGameData(); 
                 canUnveil = true; 
@@ -643,7 +691,5 @@
         lucide.createIcons(); loadGameData(); updateClock(); setInterval(updateClock, 1000); initBowlInteraction();
         function updateClock() { const n = new Date(); document.getElementById('real-time-clock').textContent = n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0')+':'+n.getSeconds().toString().padStart(2,'0'); }
     </script>
-</body>
-</html>
 </body>
 </html>
