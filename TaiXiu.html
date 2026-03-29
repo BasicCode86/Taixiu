@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tài Xỉu Luxury - Premium Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0a0a;
+            color: #e5e7eb;
+        }
+
+        .gold-gradient {
+            background: linear-gradient(135deg, #d4af37 0%, #f9d423 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .gold-bg {
+            background: linear-gradient(135deg, #d4af37 0%, #f9d423 100%);
+        }
+
+        .dice-shake {
+            animation: shake 0.5s infinite;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .bet-option {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .bet-option.active {
+            border-color: #d4af37;
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+            transform: scale(1.02);
+        }
+
+        .toast {
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+        }
+
+        .neon-win {
+            color: #22c55e;
+            text-shadow: 0 0 10px rgba(34, 197, 94, 0.8), 0 0 20px rgba(34, 197, 94, 0.5);
+            font-weight: bold;
+        }
+
+        .digital-clock {
+            font-family: 'Courier New', Courier, monospace;
+            letter-spacing: 2px;
+            color: #d4af37;
+            text-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
+        }
+
+        /* Bowl Styles */
+        #bowl {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            cursor: grab;
+            transition: transform 0.1s ease-out, box-shadow 0.3s ease;
+            z-index: 30;
+            background: radial-gradient(circle at 50% 40%, #2a2a2a 0%, #1a1a1a 100%);
+            box-shadow: inset 0 -10px 20px rgba(0,0,0,0.5), 0 10px 30px rgba(0,0,0,0.8);
+            touch-action: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+        #bowl.dragging {
+            cursor: grabbing;
+            transition: none;
+            box-shadow: inset 0 -10px 20px rgba(0,0,0,0.5), 0 20px 50px rgba(0,0,0,0.6);
+        }
+        #bowl.auto-slide {
+            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.6s ease;
+            transform: translate(-50%, -200%) rotate(-15deg) !important;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Dice Styles */
+        #dice-container {
+            pointer-events: none;
+        }
+
+        .dice-grid {
+            display: grid;
+            grid-template-areas: 
+                "d1 d2"
+                "d3 d3";
+            gap: 1.5rem;
+            justify-items: center;
+        }
+        .dice-1 { grid-area: d1; }
+        .dice-2 { grid-area: d2; }
+        .dice-3 { grid-area: d3; }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .pulse-martingale {
+            animation: pulse-red 1.5s infinite;
+            border-color: rgba(239, 68, 68, 0.8) !important;
+            background-color: rgba(127, 29, 29, 0.4) !important;
+        }
+
+        /* Insurance Checkbox Styles */
+        .insurance-checkbox {
+            appearance: none;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 0.375rem;
+            background: rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .insurance-checkbox:checked {
+            border-color: #d4af37;
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+            background: rgba(212, 175, 55, 0.1);
+        }
+        .insurance-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #d4af37;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-8">
+    <!-- Real-time Clock -->
+    <div class="fixed top-4 right-4 md:top-8 md:right-8 z-40">
+        <div class="glass-panel px-4 py-2 rounded-xl border border-yellow-500/20">
+            <div id="real-time-clock" class="digital-clock text-lg md:text-xl font-bold">00:00:00</div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="w-full max-w-4xl flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-bold gold-gradient uppercase tracking-widest">Tài Xỉu Luxury</h1>
+            <p class="text-xs text-gray-500 uppercase tracking-tighter">Premium Simulator</p>
+        </div>
+        <div class="text-right">
+            <div class="text-xs text-gray-400 uppercase">Số dư hiện tại</div>
+            <div id="balance-display" class="text-xl md:text-2xl font-bold text-yellow-500">0</div>
+            <div id="pnl-display" class="text-xs md:text-sm font-medium transition-all duration-300 opacity-0 mb-1">(0%)</div>
+            <div id="debt-display" class="text-[10px] md:text-xs font-bold text-orange-500 hidden mb-1 uppercase tracking-tighter">Đang nợ: 0</div>
+            <div class="flex gap-2 justify-end">
+                <button onclick="toggleTopup()" class="text-[10px] uppercase font-bold text-yellow-500/80 border border-yellow-500/30 px-2 py-1 rounded-lg hover:bg-yellow-500/10 transition-all">Nạp tiền</button>
+                <button onclick="toggleBank()" class="text-[10px] uppercase font-bold text-orange-500/80 border border-orange-500/30 px-2 py-1 rounded-lg hover:bg-orange-500/10 transition-all">Ngân hàng</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Start Modal -->
+    <div id="setup-modal" class="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl w-full max-w-md border border-yellow-500/20">
+            <h2 class="text-xl font-bold mb-6 text-center gold-gradient uppercase">Nhập vốn ban đầu</h2>
+            <input type="number" id="initial-capital" placeholder="Ví dụ: 1000000" 
+                class="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:border-yellow-500 text-yellow-500 text-lg">
+            <button onclick="startGame()" class="w-full gold-bg text-black font-bold py-3 rounded-xl hover:opacity-90 transition-all uppercase tracking-widest">
+                Bắt đầu chơi
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Game -->
+    <main class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-12 gap-6">
+        <!-- Stats -->
+        <div class="hidden md:block md:col-span-3 space-y-6">
+            <div class="glass-panel p-5 rounded-2xl">
+                <h3 class="text-sm font-semibold mb-4 text-gray-400 uppercase tracking-wider">Thống kê</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Tổng ván</span>
+                        <span id="total-games" class="font-bold">0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Tỷ lệ thắng</span>
+                        <span id="win-rate" class="font-bold text-green-500">0%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="glass-panel p-5 rounded-2xl">
+                <h3 class="text-sm font-semibold mb-4 text-gray-400 uppercase tracking-wider">Lịch sử (10)</h3>
+                <div id="history-list" class="flex flex-wrap gap-2"></div>
+            </div>
+        </div>
+
+        <!-- Dice & Bet -->
+        <div class="md:col-span-9 space-y-6">
+            <div class="glass-panel rounded-3xl p-10 flex flex-col items-center justify-center relative overflow-hidden min-h-[320px]">
+                <div id="bowl" class="hidden flex items-center justify-center w-64 h-64 md:w-72 md:h-72 rounded-full border-4 border-neutral-800">
+                    <div class="text-neutral-600 uppercase tracking-[0.5em] font-black text-xs">Kéo để mở</div>
+                </div>
+                <div id="dice-container" class="dice-grid mb-8">
+                    <div class="dice-1 w-16 h-16 md:w-20 md:h-20 bg-neutral-800 rounded-2xl flex items-center justify-center border border-neutral-700">
+                        <i data-lucide="dice-1" class="w-10 h-10 md:w-12 md:h-12 text-gray-400"></i>
+                    </div>
+                    <div class="dice-2 w-16 h-16 md:w-20 md:h-20 bg-neutral-800 rounded-2xl flex items-center justify-center border border-neutral-700">
+                        <i data-lucide="dice-1" class="w-10 h-10 md:w-12 md:h-12 text-gray-400"></i>
+                    </div>
+                    <div class="dice-3 w-16 h-16 md:w-20 md:h-20 bg-neutral-800 rounded-2xl flex items-center justify-center border border-neutral-700">
+                        <i data-lucide="dice-1" class="w-10 h-10 md:w-12 md:h-12 text-gray-400"></i>
+                    </div>
+                </div>
+                <div id="result-sum" class="text-4xl font-bold opacity-0">?</div>
+                <div id="result-label" class="text-sm font-medium uppercase tracking-[0.3em] text-gray-500 mt-2 opacity-0">...</div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="selectBetType('XIU')" id="bet-xiu" class="bet-option glass-panel p-8 rounded-3xl flex flex-col items-center gap-2 border-2 border-transparent">
+                    <span class="text-3xl font-black uppercase tracking-widest">Xỉu</span>
+                    <span class="text-xs text-gray-500">3 - 10 ĐIỂM</span>
+                </button>
+                <button onclick="selectBetType('TAI')" id="bet-tai" class="bet-option glass-panel p-8 rounded-3xl flex flex-col items-center gap-2 border-2 border-transparent">
+                    <span class="text-3xl font-black uppercase tracking-widest">Tài</span>
+                    <span class="text-xs text-gray-500">11 - 18 ĐIỂM</span>
+                </button>
+            </div>
+
+            <div class="glass-panel p-6 rounded-3xl space-y-4">
+                <div class="flex flex-col md:flex-row gap-4 items-center">
+                    <div class="relative w-full">
+                        <input type="text" id="bet-amount" placeholder="Số tiền cược..." 
+                            class="w-full bg-neutral-900 border border-neutral-800 rounded-xl pl-4 pr-40 py-3 focus:outline-none focus:border-yellow-500 text-yellow-500">
+                        <div class="absolute right-2 top-2 bottom-2 flex gap-1">
+                            <button id="martingale-btn" onclick="martingale()" class="px-2 bg-red-900/30 text-red-500 text-[10px] font-bold rounded-lg border border-red-500/20 hover:bg-red-500/40 transition-all">x2</button>
+                            <button onclick="appendZeros()" class="px-2 bg-yellow-500/10 text-yellow-500 text-[10px] font-bold rounded-lg border border-yellow-500/20">000</button>
+                            <button onclick="allIn()" class="px-2 bg-red-900/30 text-red-500 text-[10px] font-bold rounded-lg border border-red-500/20">ALL-IN</button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 px-2">
+                        <input type="checkbox" id="buy-insurance" class="insurance-checkbox">
+                        <label for="buy-insurance" class="text-[10px] uppercase font-bold text-gray-500 cursor-pointer select-none hover:text-yellow-500/80 transition-colors">Mua Bảo Hiểm (Phí 5% - Hoàn 10%)</label>
+                    </div>
+                    <button id="roll-button" onclick="rollDice()" class="w-full md:w-48 gold-bg text-black font-bold py-3 rounded-xl uppercase tracking-widest">Lắc ngay</button>
+                </div>
+                <div class="flex flex-wrap gap-2 justify-center">
+                    <button onclick="setQuickAmount(10000)" class="px-3 py-1 rounded-full border border-neutral-800 text-xs hover:border-yellow-500">10k</button>
+                    <button onclick="setQuickAmount(100000)" class="px-3 py-1 rounded-full border border-neutral-800 text-xs hover:border-yellow-500">100k</button>
+                    <button onclick="setQuickAmount(1000000)" class="px-3 py-1 rounded-full border border-neutral-800 text-xs hover:border-yellow-500">1M</button>
+                    <button onclick="resetCapital()" class="px-3 py-1 rounded-full border border-red-900/50 text-red-500 text-xs hover:bg-red-900/20 ml-auto">Reset</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Shop Button -->
+    <div class="fixed bottom-4 left-4 md:bottom-8 md:left-8 z-40">
+        <button onclick="toggleShop()" class="glass-panel p-4 rounded-2xl border border-yellow-500/30 hover:bg-yellow-500/10 flex items-center gap-3">
+            <i data-lucide="shopping-cart" class="w-6 h-6 text-yellow-500"></i>
+            <span class="hidden md:inline font-bold gold-gradient uppercase text-sm">Shop</span>
+        </button>
+    </div>
+
+    <!-- Shop Modal -->
+    <div id="shop-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-6 md:p-10 rounded-3xl w-full max-w-2xl border border-yellow-500/20 relative max-h-[90vh] overflow-y-auto">
+            <button onclick="toggleShop()" class="absolute top-4 right-4 text-gray-500 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+            <h2 class="text-2xl font-bold mb-8 text-center gold-gradient uppercase tracking-widest">Upgrade Shop</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Payout -->
+                <div class="glass-panel p-6 rounded-2xl border border-yellow-500/10 flex flex-col items-center text-center">
+                    <i data-lucide="sparkles" class="w-8 h-8 text-yellow-500 mb-4"></i>
+                    <h3 class="font-bold text-yellow-500 mb-1">Bàn tay vàng</h3>
+                    <p class="text-xs text-gray-500 mb-4">Tăng Payout +0.01/cấp</p>
+                    <div class="w-full bg-black/40 rounded-xl p-3 mb-6 text-xs">
+                        <div class="flex justify-between mb-1"><span>Cấp:</span><span id="payout-level" class="text-yellow-500 font-bold">0</span></div>
+                        <div class="flex justify-between"><span>Hiện tại:</span><span id="current-payout-display" class="text-white">x2.05</span></div>
+                    </div>
+                    <button id="upgrade-payout-btn" onclick="buyUpgrade('payout')" class="w-full py-3 rounded-xl font-bold text-sm gold-bg text-black disabled:opacity-30">Nâng cấp: <span id="payout-price">50M</span></button>
+                </div>
+                <!-- Refund -->
+                <div class="glass-panel p-6 rounded-2xl border border-blue-500/10 flex flex-col items-center text-center">
+                    <i data-lucide="shield-check" class="w-8 h-8 text-blue-500 mb-4"></i>
+                    <h3 class="font-bold text-blue-500 mb-1">Bảo hiểm nhân thọ</h3>
+                    <p class="text-xs text-gray-500 mb-4">Hoàn trả +1%/cấp</p>
+                    <div class="w-full bg-black/40 rounded-xl p-3 mb-6 text-xs">
+                        <div class="flex justify-between mb-1"><span>Cấp:</span><span id="refund-level" class="text-blue-500 font-bold">0/10</span></div>
+                        <div class="flex justify-between"><span>Hiện tại:</span><span id="current-refund-display" class="text-white">0%</span></div>
+                    </div>
+                    <button id="upgrade-refund-btn" onclick="buyUpgrade('refund')" class="w-full py-3 rounded-xl font-bold text-sm bg-blue-600 text-white disabled:opacity-30">Nâng cấp: <span id="refund-price">100M</span></button>
+                </div>
+                <!-- Critical Win -->
+                <div class="glass-panel p-6 rounded-2xl border border-green-500/20 bg-green-500/5 flex flex-col items-center text-center md:col-span-2">
+                    <i data-lucide="gem" class="w-8 h-8 text-green-500 mb-4"></i>
+                    <h3 class="font-bold text-green-500 mb-1">Nhân đôi may mắn</h3>
+                    <p class="text-xs text-gray-500 mb-4">Tỷ lệ x2 tiền thưởng khi thắng</p>
+                    <div class="w-full bg-black/40 rounded-xl p-3 mb-6 text-xs grid grid-cols-2 gap-4">
+                        <div class="flex justify-between"><span>Cấp:</span><span id="critical-level" class="text-green-500 font-bold">CHƯA MỞ</span></div>
+                        <div class="flex justify-between"><span>Tỷ lệ:</span><span id="current-critical-display" class="text-white">0%</span></div>
+                    </div>
+                    <button id="upgrade-critical-btn" onclick="buyUpgrade('critical')" class="w-full py-3 rounded-xl font-bold text-sm bg-green-600 text-white disabled:opacity-30">Mở khóa: <span id="critical-price">500M</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top-up Modal -->
+    <div id="topup-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl w-full max-w-md border border-yellow-500/20 relative">
+            <button onclick="toggleTopup()" class="absolute top-4 right-4 text-gray-500 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+            <h2 class="text-xl font-bold mb-6 text-center gold-gradient uppercase tracking-widest">Nạp tiền ảo</h2>
+            <div class="space-y-4">
+                <input type="number" id="topup-amount" placeholder="Số tiền nạp..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-yellow-500">
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="setTopupAmount(1000000)" class="py-2 rounded-lg border border-neutral-800 text-xs hover:border-yellow-500 transition-colors">1M</button>
+                    <button onclick="setTopupAmount(10000000)" class="py-2 rounded-lg border border-neutral-800 text-xs hover:border-yellow-500 transition-colors">10M</button>
+                    <button onclick="setTopupAmount(100000000)" class="py-2 rounded-lg border border-neutral-800 text-xs hover:border-yellow-500 transition-colors">100M</button>
+                    <button onclick="setTopupAmount(1000000000)" class="py-2 rounded-lg border border-neutral-800 text-xs hover:border-yellow-500 transition-colors">1B</button>
+                </div>
+                <button onclick="processTopup()" class="w-full gold-bg text-black font-bold py-3 rounded-xl uppercase tracking-widest mt-4">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bank Modal -->
+    <div id="bank-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl w-full max-w-md border border-orange-500/20 relative">
+            <button onclick="toggleBank()" class="absolute top-4 right-4 text-gray-500 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+            <h2 class="text-xl font-bold mb-2 text-center text-orange-500 uppercase tracking-widest">Ngân hàng Tài Xỉu</h2>
+            <p id="bank-debt-display" class="text-center text-xs text-orange-400 font-bold mb-4">Tổng nợ hiện tại: 0</p>
+            
+            <div class="space-y-6">
+                <!-- Vay tiền -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <label class="text-[10px] uppercase text-gray-500 font-bold">Vay tiền</label>
+                        <span class="text-[9px] text-red-500 font-bold italic">Phí giao dịch: 20%</span>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <div class="flex gap-2">
+                            <input type="number" id="loan-amount" oninput="calculateLoan()" placeholder="Nhập số tiền muốn vay..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-orange-500 text-sm focus:border-orange-500 outline-none">
+                            <button onclick="processLoan()" class="px-4 bg-orange-600 text-white font-bold rounded-xl hover:bg-orange-700 transition-all uppercase text-xs">Vay</button>
+                        </div>
+                        <div id="loan-calc" class="bg-black/40 p-3 rounded-xl text-[10px] space-y-1 hidden">
+                            <div class="flex justify-between text-gray-400"><span>Thực nhận (80%):</span><span id="loan-receive" class="text-green-500 font-bold">0</span></div>
+                            <div class="flex justify-between text-gray-400"><span>Nợ ghi nhận (100%):</span><span id="loan-debt" class="text-red-500 font-bold">0</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-neutral-800 pt-6 space-y-3">
+                    <label class="text-[10px] uppercase text-gray-500 font-bold">Trả nợ</label>
+                    <div class="flex gap-2">
+                        <input type="number" id="repay-amount" placeholder="Nhập số tiền muốn trả..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-green-500 text-sm focus:border-green-500 outline-none">
+                        <button onclick="processRepay()" class="px-4 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all uppercase text-xs">Trả</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 mt-4">
+                    <button onclick="setBankAmount(10000000)" class="py-2 rounded-lg border border-neutral-800 text-[10px] hover:border-orange-500 transition-colors">10M</button>
+                    <button onclick="setBankAmount(100000000)" class="py-2 rounded-lg border border-neutral-800 text-[10px] hover:border-orange-500 transition-colors">100M</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast-container" class="fixed bottom-8 right-4 left-4 md:left-auto md:w-80 flex flex-col gap-2 z-50"></div>
+
+    <script>
+        let balance = 0, initialVốn = 0, currentBetType = null, isRolling = false, history = [], stats = { total: 0, wins: 0 };
+        let currentDebt = 0, betCounter = 0;
+        let upgrades = { payoutLevel: 0, refundLevel: 0, criticalLevel: 0 };
+        const UPGRADE_CONFIG = {
+            payout: { basePrice: 50000000, baseMultiplier: 2.05, increment: 0.01 },
+            refund: { basePrice: 100000000, increment: 0.01, maxLevel: 10 },
+            critical: { unlockPrice: 500000000, basePrice: 100000000, baseChance: 0.1, increment: 0.02, maxLevel: 11 }
+        };
+
+        function loadGameData() {
+            const b = localStorage.getItem('tx_balance');
+            const u = localStorage.getItem('tx_upgrades');
+            const i = localStorage.getItem('tx_initial_vốn');
+            const s = localStorage.getItem('tx_stats');
+            const h = localStorage.getItem('tx_history');
+            const d = localStorage.getItem('tx_debt');
+            const bc = localStorage.getItem('tx_bet_counter');
+
+            if (b) balance = parseInt(b);
+            if (i) initialVốn = parseInt(i);
+            if (u) {
+                const savedUpgrades = JSON.parse(u);
+                upgrades = { ...upgrades, ...savedUpgrades };
+            }
+            if (s) stats = JSON.parse(s);
+            if (h) history = JSON.parse(h);
+            if (d) currentDebt = parseFloat(d);
+            if (bc) betCounter = parseInt(bc);
+            
+            updateBalance();
+            updateShopUI();
+            updateStats();
+            updateHistory();
+        }
+        function saveGameData() {
+            localStorage.setItem('tx_balance', balance);
+            localStorage.setItem('tx_upgrades', JSON.stringify(upgrades));
+            localStorage.setItem('tx_initial_vốn', initialVốn);
+            localStorage.setItem('tx_stats', JSON.stringify(stats));
+            localStorage.setItem('tx_history', JSON.stringify(history));
+            localStorage.setItem('tx_debt', currentDebt);
+            localStorage.setItem('tx_bet_counter', betCounter);
+        }
+        function updateBalance() {
+            document.getElementById('balance-display').textContent = balance.toLocaleString('vi-VN');
+            updatePnL();
+            updateDebtUI();
+        }
+
+        // Input Formatting
+        function formatBetInput(val) {
+            if (!val) return "";
+            let n = val.toString().replace(/\D/g, '');
+            return n ? parseInt(n).toLocaleString('vi-VN') : "";
+        }
+        function parseBetInput(val) {
+            return parseInt(val.toString().replace(/\D/g, '')) || 0;
+        }
+        
+        const betInput = document.getElementById('bet-amount');
+        betInput.addEventListener('input', function(e) {
+            const cursor = e.target.selectionStart;
+            const oldLen = e.target.value.length;
+            const raw = parseBetInput(e.target.value);
+            e.target.value = formatBetInput(raw);
+            const newLen = e.target.value.length;
+            e.target.setSelectionRange(cursor + (newLen - oldLen), cursor + (newLen - oldLen));
+        });
+        function updatePnL() {
+            const el = document.getElementById('pnl-display');
+            if (!initialVốn || initialVốn <= 0) { el.classList.add('opacity-0'); return; }
+            
+            // PnL thực tế = (Số dư - Số nợ - Vốn ban đầu) / Vốn ban đầu * 100
+            const actualProfit = balance - currentDebt - initialVốn;
+            const p = (actualProfit / initialVốn) * 100;
+            
+            el.textContent = `(${p > 0 ? '+' : ''}${p.toFixed(1)}%)`;
+            el.classList.remove('opacity-0');
+            el.className = `text-xs md:text-sm font-medium transition-all duration-300 ${p > 0 ? 'text-green-400' : p < 0 ? 'text-red-400' : 'text-gray-400'}`;
+        }
+        function updateDebtUI() {
+            const debtEl = document.getElementById('debt-display');
+            const bankDebtEl = document.getElementById('bank-debt-display');
+            
+            if (currentDebt > 0) {
+                debtEl.textContent = `Đang nợ: ${currentDebt.toLocaleString('vi-VN')}`;
+                debtEl.classList.remove('hidden');
+            } else {
+                debtEl.classList.add('hidden');
+            }
+            
+            if (bankDebtEl) {
+                bankDebtEl.textContent = `Tổng nợ hiện tại: ${currentDebt.toLocaleString('vi-VN')}`;
+            }
+        }
+        function toggleShop() { const m = document.getElementById('shop-modal'); m.classList.toggle('hidden'); if (!m.classList.contains('hidden')) updateShopUI(); }
+        function toggleTopup() { document.getElementById('topup-modal').classList.toggle('hidden'); }
+        function getUpgradePrice(type) { 
+            const c = UPGRADE_CONFIG[type];
+            if (type === 'critical') {
+                if (upgrades.criticalLevel === 0) return c.unlockPrice;
+                // Giá nâng cấp sau khi mở khóa: 100M * 2^(level-1)
+                return c.basePrice * Math.pow(2, upgrades.criticalLevel - 1);
+            }
+            const l = type === 'payout' ? upgrades.payoutLevel : upgrades.refundLevel; 
+            return c.basePrice * Math.pow(2, l); 
+        }
+        function formatLargeNumber(n) { if (n >= 1e9) return (n/1e9).toFixed(1)+'B'; if (n >= 1e6) return (n/1e6).toFixed(0)+'M'; return n.toLocaleString('vi-VN'); }
+        function updateShopUI() {
+            const pp = getUpgradePrice('payout'), cp = (UPGRADE_CONFIG.payout.baseMultiplier + upgrades.payoutLevel * UPGRADE_CONFIG.payout.increment).toFixed(2);
+            document.getElementById('payout-level').textContent = upgrades.payoutLevel;
+            document.getElementById('current-payout-display').textContent = `x${cp}`;
+            document.getElementById('payout-price').textContent = formatLargeNumber(pp);
+            document.getElementById('upgrade-payout-btn').disabled = balance < pp;
+            const rp = getUpgradePrice('refund'), cr = upgrades.refundLevel;
+            document.getElementById('refund-level').textContent = `${cr}/10`;
+            document.getElementById('current-refund-display').textContent = `${cr}%`;
+            document.getElementById('refund-price').textContent = upgrades.refundLevel >= 10 ? "MAX" : formatLargeNumber(rp);
+            document.getElementById('upgrade-refund-btn').disabled = balance < rp || upgrades.refundLevel >= 10;
+            
+            // Critical Win UI
+            const cp_price = getUpgradePrice('critical');
+            const cl = upgrades.criticalLevel;
+            const cc = cl === 0 ? 0 : Math.round((UPGRADE_CONFIG.critical.baseChance + (cl - 1) * UPGRADE_CONFIG.critical.increment) * 100);
+            
+            const critLevelEl = document.getElementById('critical-level');
+            const critDisplayEl = document.getElementById('current-critical-display');
+            const critBtnEl = document.getElementById('upgrade-critical-btn');
+
+            if (critLevelEl) critLevelEl.textContent = cl === 0 ? "CHƯA MỞ" : `${cl}/${UPGRADE_CONFIG.critical.maxLevel}`;
+            if (critDisplayEl) critDisplayEl.textContent = `${cc}%`;
+            
+            if (critBtnEl) {
+                const priceText = cl >= UPGRADE_CONFIG.critical.maxLevel ? "MAX" : formatLargeNumber(cp_price);
+                const label = cl === 0 ? "Mở khóa" : "Nâng cấp";
+                critBtnEl.innerHTML = `${label}: <span id="critical-price">${priceText}</span>`;
+                critBtnEl.disabled = balance < cp_price || cl >= UPGRADE_CONFIG.critical.maxLevel;
+            }
+        }
+        function buyUpgrade(type) {
+            const p = getUpgradePrice(type); if (balance < p) { showToast("Không đủ tiền!", "error"); return; }
+            if (type === 'refund' && upgrades.refundLevel >= 10) return;
+            if (type === 'critical' && upgrades.criticalLevel >= UPGRADE_CONFIG.critical.maxLevel) return;
+            
+            balance -= p; 
+            if (type === 'payout') upgrades.payoutLevel++; 
+            else if (type === 'refund') upgrades.refundLevel++;
+            else if (type === 'critical') upgrades.criticalLevel++;
+            
+            saveGameData(); updateBalance(); updateShopUI(); showToast("Nâng cấp thành công!", "success");
+        }
+
+        let isDraggingBowl = false, canUnveil = false, startX, startY, currentX, currentY, bowlOffsetX = 0, bowlOffsetY = 0, lastResult = null;
+        const bowl = document.getElementById('bowl');
+        function initBowlInteraction() {
+            bowl.addEventListener('mousedown', startDrag); window.addEventListener('mousemove', drag); window.addEventListener('mouseup', endDrag);
+            bowl.addEventListener('touchstart', (e) => startDrag(e.touches[0]), {passive:false});
+            window.addEventListener('touchmove', (e) => drag(e.touches[0], e), {passive:false});
+            window.addEventListener('touchend', endDrag);
+        }
+        function startDrag(e) { if (canUnveil && bowl.style.display !== 'none' && !bowl.classList.contains('auto-slide')) { isDraggingBowl = true; startX = e.clientX; startY = e.clientY; bowl.classList.add('dragging'); bowl.style.transition = 'none'; } }
+        function drag(e, o = null) { if (!isDraggingBowl) return; if (o && o.cancelable) o.preventDefault(); currentX = e.clientX; currentY = e.clientY; bowlOffsetX = currentX - startX; bowlOffsetY = currentY - startY; bowl.style.transform = `translate(calc(-50% + ${bowlOffsetX}px), calc(-50% + ${bowlOffsetY}px))`; checkDiceVisibility(); }
+        function checkDiceVisibility() { const d = document.getElementById('dice-container').getBoundingClientRect(), b = bowl.getBoundingClientRect(); if (b.right < d.left || b.left > d.right || b.bottom < d.top || b.top > d.bottom) autoSlideBowl(); }
+        function endDrag() { if (!isDraggingBowl) return; isDraggingBowl = false; bowl.classList.remove('dragging'); bowl.style.transition = 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)'; bowlOffsetX = 0; bowlOffsetY = 0; bowl.style.transform = `translate(-50%, -50%)`; }
+        function autoSlideBowl() { if (!isDraggingBowl && bowlOffsetX === 0 && bowlOffsetY === 0) return; isDraggingBowl = false; canUnveil = false; bowl.classList.add('auto-slide'); setTimeout(showResultsUI, 300); }
+
+        function showResultsUI() {
+            const { sum, resultType, isWin, winAmount, betAmount, refundAmount, insuranceRefund, isCritical } = lastResult;
+            const rs = document.getElementById('result-sum'), rl = document.getElementById('result-label');
+            rs.textContent = sum; rs.classList.remove('opacity-0');
+            rl.textContent = resultType === 'TAI' ? 'Tài' : 'Xỉu'; rl.classList.remove('opacity-0');
+            rl.className = `text-sm font-medium uppercase tracking-[0.3em] mt-2 ${resultType === 'TAI' ? 'text-red-500' : 'text-blue-500'}`;
+            if (isWin) {
+                if (isCritical) {
+                    showToast(`NHÂN ĐÔI MAY MẮN! +${winAmount.toLocaleString('vi-VN')}`, "success");
+                    // Hiệu ứng nảy lấp lánh cho số dư
+                    const balanceEl = document.getElementById('balance-display');
+                    balanceEl.classList.add('scale-125', 'text-green-400', 'duration-500');
+                    setTimeout(() => balanceEl.classList.remove('scale-125', 'text-green-400'), 1000);
+                } else {
+                    showToast(`Thắng +${winAmount.toLocaleString('vi-VN')}`, "success");
+                }
+                document.getElementById('martingale-btn').classList.remove('pulse-martingale');
+            } else {
+                let msg = `Thua -${betAmount.toLocaleString('vi-VN')}`;
+                if (refundAmount > 0) msg += `. Hoàn: +${refundAmount.toLocaleString('vi-VN')}`;
+                if (insuranceRefund > 0) msg += `. Bảo hiểm: +${insuranceRefund.toLocaleString('vi-VN')}`;
+                showToast(msg, "error");
+                // Thêm hiệu ứng nhấp nháy gợi ý Martingale khi thua
+                document.getElementById('martingale-btn').classList.add('pulse-martingale');
+            }
+            
+            // Cập nhật lại các biến trạng thái quan trọng để ván sau không bị treo
+            isRolling = false;
+            canUnveil = false; 
+            document.getElementById('roll-button').disabled = false;
+            
+            // Cập nhật thống kê và lịch sử vào UI
+            updateBalance(); 
+            updateStats(); 
+            updateHistory(); 
+        }
+
+        function startGame() { const i = document.getElementById('initial-capital'), a = parseInt(i.value); if (isNaN(a) || a <= 0) return; balance = a; initialVốn = a; saveGameData(); updateBalance(); document.getElementById('setup-modal').classList.add('hidden'); }
+        function selectBetType(t) { if (isRolling) return; currentBetType = t; document.getElementById('bet-xiu').classList.toggle('active', t === 'XIU'); document.getElementById('bet-tai').classList.toggle('active', t === 'TAI'); }
+        function setQuickAmount(a) { 
+            const i = document.getElementById('bet-amount');
+            i.value = formatBetInput(a);
+        }
+        function allIn() { 
+            const i = document.getElementById('bet-amount');
+            i.value = formatBetInput(balance);
+        }
+        function appendZeros() { 
+            const i = document.getElementById('bet-amount');
+            if (i.value) {
+                let raw = parseBetInput(i.value).toString() + "000";
+                i.value = formatBetInput(raw);
+            }
+        }
+        function martingale() {
+            const i = document.getElementById('bet-amount');
+            let a = parseBetInput(i.value);
+            if (isNaN(a) || a <= 0) return;
+            
+            let doubled = a * 2;
+            if (doubled > balance) {
+                i.value = formatBetInput(balance);
+                showToast("Đã cược tất cả do không đủ tiền gấp đôi!", "warning");
+            } else {
+                i.value = formatBetInput(doubled);
+            }
+            // Xóa hiệu ứng nhấp nháy khi đã bấm
+            document.getElementById('martingale-btn').classList.remove('pulse-martingale');
+        }
+        function setTopupAmount(a) { document.getElementById('topup-amount').value = a; }
+        function processTopup() { const i = document.getElementById('topup-amount'), a = parseInt(i.value); if (isNaN(a) || a <= 0) return; balance += a; saveGameData(); updateBalance(); toggleTopup(); i.value = ""; showToast(`Nạp +${a.toLocaleString('vi-VN')}`, "success"); }
+        
+        // Bank Functions
+        function toggleBank() {
+            document.getElementById('bank-modal').classList.toggle('hidden');
+            updateDebtUI();
+        }
+
+        function setBankAmount(amount) {
+            document.getElementById('loan-amount').value = amount;
+            document.getElementById('repay-amount').value = amount;
+            calculateLoan();
+        }
+
+        function calculateLoan() {
+            const input = document.getElementById('loan-amount');
+            const calcDiv = document.getElementById('loan-calc');
+            const receiveEl = document.getElementById('loan-receive');
+            const debtEl = document.getElementById('loan-debt');
+            const amount = parseInt(input.value);
+
+            if (isNaN(amount) || amount <= 0) {
+                calcDiv.classList.add('hidden');
+                return;
+            }
+
+            calcDiv.classList.remove('hidden');
+            receiveEl.textContent = Math.floor(amount * 0.8).toLocaleString('vi-VN');
+            debtEl.textContent = amount.toLocaleString('vi-VN');
+        }
+
+        function processLoan() {
+            const input = document.getElementById('loan-amount');
+            const amount = parseInt(input.value);
+
+            if (isNaN(amount) || amount <= 0) {
+                showToast("Vui lòng nhập số tiền hợp lệ!", "error");
+                return;
+            }
+
+            const receiveAmount = Math.floor(amount * 0.8);
+            balance += receiveAmount;
+            currentDebt += amount;
+            
+            saveGameData();
+            updateBalance();
+            input.value = "";
+            document.getElementById('loan-calc').classList.add('hidden');
+            showToast(`Vay thành công! Thực nhận ${receiveAmount.toLocaleString('vi-VN')} (đã trừ 20% phí). Đừng quên trả nợ!`, "success");
+        }
+
+        function processRepay() {
+            const input = document.getElementById('repay-amount');
+            const amount = parseInt(input.value);
+
+            if (isNaN(amount) || amount <= 0) {
+                showToast("Vui lòng nhập số tiền hợp lệ!", "error");
+                return;
+            }
+
+            if (balance < amount) {
+                showToast("Số dư không đủ để trả nợ!", "error");
+                return;
+            }
+
+            if (currentDebt <= 0) {
+                showToast("Bạn hiện không có khoản nợ nào.", "info");
+                return;
+            }
+
+            // Nếu trả nhiều hơn nợ, chỉ trừ hết nợ
+            const actualRepay = Math.min(amount, currentDebt);
+            
+            balance -= actualRepay;
+            currentDebt -= actualRepay;
+
+            saveGameData();
+            updateBalance();
+            input.value = "";
+            
+            if (currentDebt === 0) {
+                showToast("Chúc mừng! Bạn đã trả hết nợ.", "success");
+            } else {
+                showToast(`Đã trả ${actualRepay.toLocaleString('vi-VN')} tiền nợ.`, "success");
+            }
+        }
+
+        function resetCapital() {
+            if (!confirm("Bạn có chắc chắn muốn reset toàn bộ vốn và thống kê?")) return;
+            
+            balance = initialVốn;
+            stats = { total: 0, wins: 0 };
+            history = [];
+            currentDebt = 0;
+            betCounter = 0;
+            
+            if (confirm("Bạn có muốn reset toàn bộ các nâng cấp trong Shop luôn không?")) {
+                upgrades = { 
+                    payoutLevel: 0, 
+                    refundLevel: 0, 
+                    criticalLevel: 0 
+                };
+                showToast("Đã reset toàn bộ Shop và Nâng cấp!", "info");
+            }
+            
+            saveGameData();
+            updateBalance();
+            updateStats();
+            updateHistory();
+            updateShopUI();
+            showToast("Đã reset vốn và thống kê về ban đầu.", "success");
+        }
+
+        async function rollDice() {
+            if (isRolling) return;
+            const betInput = document.getElementById('bet-amount');
+            const insuranceCheckbox = document.getElementById('buy-insurance');
+            const a = parseBetInput(betInput.value);
+            
+            const isInsurance = insuranceCheckbox.checked;
+            const insuranceFee = isInsurance ? Math.round(a * 0.05) : 0;
+            const totalRequired = a + insuranceFee;
+
+            if (!currentBetType || isNaN(a) || a <= 0 || totalRequired > balance) { 
+                if (totalRequired > balance && a <= balance) {
+                    showToast("Không đủ tiền trả phí bảo hiểm!", "warning");
+                } else {
+                    showToast("Cược không hợp lệ hoặc không đủ số dư!", "warning"); 
+                }
+                return; 
+            }
+
+            try {
+                isRolling = true; 
+                document.getElementById('roll-button').disabled = true;
+                
+                balance -= totalRequired; 
+                updateBalance();
+                
+                // Xóa hiệu ứng gợi ý khi bắt đầu ván mới
+                document.getElementById('martingale-btn').classList.remove('pulse-martingale');
+                
+                const rs = document.getElementById('result-sum'), 
+                      rl = document.getElementById('result-label'), 
+                      b = document.getElementById('bowl'), 
+                      dc = document.getElementById('dice-container');
+                
+                rs.classList.add('opacity-0'); 
+                rl.classList.add('opacity-0');
+                
+                b.style.display = 'flex'; 
+                b.style.transform = 'translate(-50%, -50%)'; 
+                b.classList.remove('auto-slide');
+                
+                dc.classList.add('dice-shake');
+                
+                // Giả lập thời gian lắc xúc xắc
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                const d = [
+                    Math.floor(Math.random() * 6) + 1, 
+                    Math.floor(Math.random() * 6) + 1, 
+                    Math.floor(Math.random() * 6) + 1
+                ];
+                const s = d.reduce((x, y) => x + y, 0);
+                const rt = s >= 11 ? 'TAI' : 'XIU';
+                
+                dc.classList.remove('dice-shake');
+                dc.innerHTML = d.map((v, i) => `
+                    <div class="dice-${i+1} w-16 h-16 md:w-20 md:h-20 bg-neutral-800 rounded-2xl flex items-center justify-center border border-neutral-700">
+                        <i data-lucide="dice-${v}" class="w-10 h-10 md:w-12 md:h-12 ${v === 1 ? 'text-red-500' : 'text-yellow-500'}"></i>
+                    </div>
+                `).join('');
+                
+                lucide.createIcons();
+                
+                const win = currentBetType === rt; 
+                let wa = 0, ra = 0, ir = 0, isCrit = false;
+                
+                if (win) { 
+                    let multiplier = UPGRADE_CONFIG.payout.baseMultiplier + upgrades.payoutLevel * UPGRADE_CONFIG.payout.increment;
+                    
+                    // Logic Nhân đôi may mắn
+                    if (upgrades.criticalLevel > 0) {
+                        const chance = UPGRADE_CONFIG.critical.baseChance + (upgrades.criticalLevel - 1) * UPGRADE_CONFIG.critical.increment;
+                        if (Math.random() < chance) {
+                            multiplier *= 2;
+                            isCrit = true;
+                        }
+                    }
+                    
+                    wa = Math.round(a * multiplier); 
+                    balance += wa; 
+                    stats.wins++; 
+                } else {
+                    // Hoàn tiền từ nâng cấp shop
+                    if (upgrades.refundLevel > 0) {
+                        ra = Math.round(a * (upgrades.refundLevel / 100)); 
+                        balance += ra; 
+                    }
+                    // Hoàn tiền từ bảo hiểm
+                    if (isInsurance) {
+                        ir = Math.round(a * 0.1);
+                        balance += ir;
+                    }
+                }
+                
+                lastResult = { sum: s, resultType: rt, isWin: win, winAmount: wa, betAmount: a, refundAmount: ra, insuranceRefund: ir, isCritical: isCrit };
+                
+                stats.total++; 
+                betCounter++; // Tăng biến đếm ván cược
+                
+                history.unshift(rt === 'TAI' ? 'T' : 'X'); 
+                if (history.length > 10) history.pop();
+                
+                // Kiểm tra lãi nợ sau mỗi 5 ván cược
+                if (currentDebt > 0 && betCounter % 5 === 0) {
+                    const interest = currentDebt * 0.01;
+                    currentDebt += interest;
+                    showToast(`Phát sinh 1% lãi nợ sau 5 ván cược: +${Math.round(interest).toLocaleString('vi-VN')}`, "warning");
+                    
+                    // Hiệu ứng rung nhẹ cho dòng hiển thị nợ
+                    const debtEl = document.getElementById('debt-display');
+                    if (debtEl) {
+                        debtEl.classList.add('scale-110', 'text-red-500');
+                        setTimeout(() => debtEl.classList.remove('scale-110', 'text-red-500'), 500);
+                    }
+                }
+                
+                saveGameData(); 
+                canUnveil = true; 
+                showToast("Hãy kéo bát để xem kết quả!", "info");
+
+            } catch (error) {
+                console.error("Game Error:", error);
+                isRolling = false;
+                document.getElementById('roll-button').disabled = false;
+                showToast("Có lỗi xảy ra, vui lòng thử lại!", "error");
+            }
+        }
+
+        function updateStats() { 
+            const total = stats.total || 0;
+            const wins = stats.wins || 0;
+            const r = total ? Math.round((wins / total) * 100) : 0; 
+            
+            document.getElementById('total-games').textContent = total; 
+            document.getElementById('win-rate').textContent = r + '%'; 
+            
+            // Check if mobile elements exist before updating
+            const totalMobile = document.getElementById('total-games-mobile');
+            const rateMobile = document.getElementById('win-rate-mobile');
+            if (totalMobile) totalMobile.textContent = total; 
+            if (rateMobile) rateMobile.textContent = r + '%'; 
+        }
+        function updateHistory() { 
+            const historyList = document.getElementById('history-list');
+            if (!historyList) return;
+
+            const h = (history || []).map(x => `<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${x === 'T' ? 'bg-red-900/30 text-red-500 border border-red-500/30' : 'bg-blue-900/30 text-blue-500 border border-blue-500/30'}">${x}</div>`).join(''); 
+            
+            historyList.innerHTML = h; 
+            
+            const historyMobile = document.getElementById('history-list-mobile');
+            if (historyMobile) historyMobile.innerHTML = h; 
+        }
+        function showToast(m, t = 'info') { const c = document.getElementById('toast-container'), toast = document.createElement('div'), cls = {success:'bg-green-900/80 border-green-500 text-green-200',error:'bg-red-900/80 border-red-500 text-red-200',warning:'bg-yellow-900/80 border-yellow-500 text-yellow-200',info:'bg-neutral-900/80 border-neutral-700 text-neutral-200'}; toast.className = `toast p-4 rounded-xl border-l-4 glass-panel ${cls[t]}`; toast.innerHTML = `<span class="text-sm font-medium">${m}</span>`; c.appendChild(toast); setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000); }
+
+        lucide.createIcons(); loadGameData(); updateClock(); setInterval(updateClock, 1000); initBowlInteraction();
+        function updateClock() { const n = new Date(); document.getElementById('real-time-clock').textContent = n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0')+':'+n.getSeconds().toString().padStart(2,'0'); }
+    </script>
+</body>
+</html>
